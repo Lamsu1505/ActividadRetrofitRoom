@@ -1,0 +1,43 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "00000000000000000000000000000000",
+    "entities": [
+      {
+        "tableName": "countries",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`cca3` TEXT NOT NULL, `nameCommon` TEXT NOT NULL, `nameOfficial` TEXT, `flagPng` TEXT, `flagAlt` TEXT, `region` TEXT, `subregion` TEXT, `capitalCsv` TEXT, `population` INTEGER, `area` REAL, `languagesJson` TEXT, `currenciesJson` TEXT, `timezonesCsv` TEXT, `lat` REAL, `lng` REAL, `lastUpdatedEpochMs` INTEGER NOT NULL, PRIMARY KEY(`cca3`))",
+        "fields": [
+          { "fieldPath": "cca3", "columnName": "cca3", "affinity": "TEXT", "notNull": true },
+          { "fieldPath": "nameCommon", "columnName": "nameCommon", "affinity": "TEXT", "notNull": true },
+          { "fieldPath": "nameOfficial", "columnName": "nameOfficial", "affinity": "TEXT", "notNull": false },
+          { "fieldPath": "flagPng", "columnName": "flagPng", "affinity": "TEXT", "notNull": false },
+          { "fieldPath": "flagAlt", "columnName": "flagAlt", "affinity": "TEXT", "notNull": false },
+          { "fieldPath": "region", "columnName": "region", "affinity": "TEXT", "notNull": false },
+          { "fieldPath": "subregion", "columnName": "subregion", "affinity": "TEXT", "notNull": false },
+          { "fieldPath": "capitalCsv", "columnName": "capitalCsv", "affinity": "TEXT", "notNull": false },
+          { "fieldPath": "population", "columnName": "population", "affinity": "INTEGER", "notNull": false },
+          { "fieldPath": "area", "columnName": "area", "affinity": "REAL", "notNull": false },
+          { "fieldPath": "languagesJson", "columnName": "languagesJson", "affinity": "TEXT", "notNull": false },
+          { "fieldPath": "currenciesJson", "columnName": "currenciesJson", "affinity": "TEXT", "notNull": false },
+          { "fieldPath": "timezonesCsv", "columnName": "timezonesCsv", "affinity": "TEXT", "notNull": false },
+          { "fieldPath": "lat", "columnName": "lat", "affinity": "REAL", "notNull": false },
+          { "fieldPath": "lng", "columnName": "lng", "affinity": "REAL", "notNull": false },
+          { "fieldPath": "lastUpdatedEpochMs", "columnName": "lastUpdatedEpochMs", "affinity": "INTEGER", "notNull": true }
+        ],
+        "primaryKey": {
+          "columnNames": [ "cca3" ],
+          "autoGenerate": false
+        },
+        "indices": [],
+        "foreignKeys": []
+      }
+    ],
+    "views": [],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '00000000000000000000000000000000')"
+    ]
+  }
+}
+
