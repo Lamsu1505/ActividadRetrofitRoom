@@ -46,20 +46,20 @@ fun CountryDto.toDomainListItem(): CountryListItem {
     )
 }
 
-//fun CountryDto.toDomainDetail(): CountryDetail {
-//    return CountryDetail(
-//        name = name.common,
-//        officialName = name.official,
-//        capital = capital?.firstOrNull() ?: "N/A",
-//        region = region,
-//        subregion = subregion ?: "N/A",
-//        languages = languages?.values?.toList() ?: emptyList(),
-//        currencies = currencies?.mapValues { "${it.value.name} (${it.value.symbol ?: ""})" } ?: emptyMap(),
-//        population = population,
-//        area = area ?: 0.0,
-//        flagUrl = flags.png,
-//        cca3 = cca3,
-//        borders = borders ?: emptyList(),
-//        continents = continents ?: emptyList()
-//    )
-//}
+fun CountryDto.toDomainDetail(): CountryDetail {
+    return CountryDetail(
+        cca3 = cca3 ?: "UNK",
+        name = name?.common ?: "Sin nombre",
+        officialName = name?.official ?: "Sin nombre oficial",
+        capital = capital?.firstOrNull() ?: "N/A",
+        region = region ?: "Desconocida",
+        subregion = subregion ?: "Desconocida",
+        population = population ?: 0L,
+        area = area ?: 0.0,
+        languages = languages?.values?.toList() ?: emptyList(),
+        currencies = currencies?.mapValues { it.value.name } ?: emptyMap(),
+        borders = borders ?: emptyList(),
+        continents = continents ?: emptyList(),
+        flagUrl = flags?.png ?: ""
+    )
+}
