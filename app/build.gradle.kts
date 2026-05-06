@@ -9,6 +9,21 @@ plugins {
 }
 
 android {
+
+    packaging {
+        resources {
+            excludes += setOf(
+                "META-INF/INDEX.LIST",
+                "META-INF/DEPENDENCIES",
+                "META-INF/LICENSE",
+                "META-INF/LICENSE.txt",
+                "META-INF/NOTICE",
+                "META-INF/NOTICE.txt",
+                "META-INF/*.kotlin_module",
+            )
+        }
+    }
+
     namespace = "com.example.proyectofinaldisenomovil"
     compileSdk = 35
 
@@ -116,4 +131,9 @@ dependencies {
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)
+
+    dependencies {
+        implementation(libs.retrofit)
+        implementation(libs.converter.gson)
+    }
 }

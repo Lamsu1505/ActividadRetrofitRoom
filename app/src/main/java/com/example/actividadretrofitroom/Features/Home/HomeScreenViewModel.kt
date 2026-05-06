@@ -2,12 +2,9 @@ package com.example.actividadretrofitroom.Features.Home
 
 
 
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.actividadretrofitroom.Data.Local.Entity.PaisEntity
-import com.example.actividadretrofitroom.Data.Local.Repository.PaisRepository
+import com.example.actividadretrofitroom.Data.Repository.PaisRepository
 import com.example.actividadretrofitroom.Domain.CountryListItem
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.FlowPreview
@@ -70,27 +67,6 @@ class HomeScreenViewModel @Inject constructor(
         observeSearchQuery()
         loadCountries(reset = true)
     }
-
-    fun insert(pais: PaisEntity) {
-        // Se utiliza una corrutina para insertar el usuario ya que es una operación suspend
-        viewModelScope.launch {
-            paisRepository.insert(pais)
-        }
-    }
-
-    fun getAll(): LiveData<List<PaisEntity>> {
-        // Se crea un LiveData para observar los usuarios
-        val usersLiveData = MutableLiveData<List<PaisEntity>>()
-        // Se utiliza una corrutina para obtener los usuarios ya que es una operación suspend
-        viewModelScope.launch {
-            val users = paisRepository.getAll()
-            usersLiveData.postValue(users)
-        }
-        return usersLiveData
-    }
-
-
-
 
     // ── API pública ──────────────────────────────────────────────────────────
 
@@ -187,54 +163,39 @@ class HomeScreenViewModel @Inject constructor(
                 _state.update { it.copy(isLoadingNextPage = true) }
             }
 
-            val page = if (reset) 1 else current.currentPage + 1
+            // Llamada al repositorio
+            val result = if (current.selectedRegion != null) {
+                paisRepository.getCountriesByRegion(current.selectedRegion)
+            } else {
+                paisRepository.getAllCountries()
+            }
 
-//            runCatching {
-//                repository.getCountries(
-//                    query = current.searchQuery.trim(),
-//                    region = current.selectedRegion,
-//                    subregion = current.selectedSubregion,
-//                    page = page,
-//                    pageSize = PAGE_SIZE,
-//                )
-//            }.onSuccess { newCountries ->
-//                _allLoadedCountries.addAll(newCountries)
-//
-//                // Detectar subregiones disponibles para el filtro
-//                if (reset && current.selectedRegion != null) {
-//                    val subregions = newCountries
-//                        .mapNotNull { it.subregion }
-//                        .distinct()
-//                        .sorted()
-//                    _state.update { it.copy(availableSubregions = subregions) }
-//                }
-//
-//                _state.update {
-//                    it.copy(
-//                        uiState = if (_allLoadedCountries.isEmpty())
-//                            HomeUiState.Empty
-//                        else
-//                            HomeUiState.Success(_allLoadedCountries.toList()),
-//                        currentPage = page,
-//                        canLoadMore = newCountries.size == PAGE_SIZE,
-//                        isLoadingNextPage = false,
-//                    )
-//                }
-//            }.onFailure { error ->
-//                _state.update {
-//                    it.copy(
-//                        uiState = if (_allLoadedCountries.isEmpty())
-//                            HomeUiState.Error(
-//                                error.message ?: "Error desconocido al cargar países"
-//                            )
-//                        else
-//                        // Si ya había datos cargados, los mantenemos
-//                            HomeUiState.Success(_allLoadedCountries.toList()),
-//                        isLoadingNextPage = false,
-//                        canLoadMore = false,
-//                    )
-//                }
-//            }
+            result.onSuccess { allCountries ->
+                // Filtrado local para búsqueda (ya que la API de búsqueda es distinta)
+                val filtered = if (current.searchQuery.isNotBlank()) {
+                    allCountries.filter {
+                        it.name.contains(current.searchQuery, ignoreCase = true) ||
+                                it.cca3.contains(current.searchQuery, ignoreCase = true)
+                    }
+                } else allCountries
+
+                _allLoadedCountries.addAll(filtered)
+
+                _state.update {
+                    it.copy(
+                        uiState = if (_allLoadedCountries.isEmpty()) HomeUiState.Empty else HomeUiState.Success(_allLoadedCountries.toList()),
+                        isLoadingNextPage = false,
+                        canLoadMore = false // REST Countries suele devolver todo de golpe
+                    )
+                }
+            }.onFailure { error ->
+                _state.update {
+                    it.copy(
+                        uiState = HomeUiState.Error(error.message ?: "Error al cargar países"),
+                        isLoadingNextPage = false
+                    )
+                }
+            }
         }
     }
 }
