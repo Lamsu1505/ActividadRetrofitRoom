@@ -143,8 +143,7 @@ class HomeScreenViewModel @Inject constructor(
 
     /**
      * Ejecuta la carga de países según los filtros activos.
-     *
-     * @param reset Si es `true`, reinicia la paginación desde la página 1.
+     * Ahora utiliza el endpoint de búsqueda remota si hay un query.
      */
     private fun loadCountries(reset: Boolean) {
         viewModelScope.launch {
@@ -163,29 +162,38 @@ class HomeScreenViewModel @Inject constructor(
                 _state.update { it.copy(isLoadingNextPage = true) }
             }
 
-            // Llamada al repositorio
-            val result = if (current.selectedRegion != null) {
-                paisRepository.getCountriesByRegion(current.selectedRegion)
-            } else {
-                paisRepository.getAllCountries()
+            // Decidir qué endpoint llamar
+            val result = when {
+                current.searchQuery.isNotBlank() -> {
+                    paisRepository.searchCountries(current.searchQuery.trim())
+                }
+                current.selectedRegion != null -> {
+                    paisRepository.getCountriesByRegion(current.selectedRegion)
+                }
+                else -> {
+                    paisRepository.getAllCountries()
+                }
             }
 
-            result.onSuccess { allCountries ->
-                // Filtrado local para búsqueda (ya que la API de búsqueda es distinta)
-                val filtered = if (current.searchQuery.isNotBlank()) {
-                    allCountries.filter {
-                        it.name.contains(current.searchQuery, ignoreCase = true) ||
-                                it.cca3.contains(current.searchQuery, ignoreCase = true)
-                    }
-                } else allCountries
+            result.onSuccess { countries ->
+                // Si buscamos por nombre y tenemos región seleccionada,
+                // filtramos localmente los resultados de la búsqueda por región.
+                val processedCountries = if (current.searchQuery.isNotBlank() && current.selectedRegion != null) {
+                    countries.filter { it.region.equals(current.selectedRegion, ignoreCase = true) }
+                } else {
+                    countries
+                }
 
-                _allLoadedCountries.addAll(filtered)
+                _allLoadedCountries.addAll(processedCountries)
 
                 _state.update {
                     it.copy(
-                        uiState = if (_allLoadedCountries.isEmpty()) HomeUiState.Empty else HomeUiState.Success(_allLoadedCountries.toList()),
+                        uiState = if (_allLoadedCountries.isEmpty())
+                            HomeUiState.Empty
+                        else
+                            HomeUiState.Success(_allLoadedCountries.toList()),
                         isLoadingNextPage = false,
-                        canLoadMore = false // REST Countries suele devolver todo de golpe
+                        canLoadMore = false // REST Countries devuelve la lista completa
                     )
                 }
             }.onFailure { error ->

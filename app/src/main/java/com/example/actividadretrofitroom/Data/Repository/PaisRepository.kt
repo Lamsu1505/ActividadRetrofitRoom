@@ -13,4 +13,5 @@ interface PaisRepository {
     suspend fun getAllCountries(): Result<List<CountryListItem>>
     suspend fun getCountryByCode(code: String): Result<CountryDetail>
     suspend fun getCountriesByRegion(region: String): Result<List<CountryListItem>>
+    suspend fun searchCountries(query: String): Result<List<CountryListItem>>
 }

@@ -56,4 +56,13 @@ class PaisRepositoryImpl @Inject constructor(
             Result.failure(e)
         }
     }
+
+    override suspend fun searchCountries(query: String): Result<List<CountryListItem>> {
+        return try {
+            val response = apiService.searchByName(query)
+            Result.success(response.map { it.toDomainListItem() })
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }
