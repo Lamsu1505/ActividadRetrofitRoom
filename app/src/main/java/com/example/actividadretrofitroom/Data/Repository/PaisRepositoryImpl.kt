@@ -61,6 +61,9 @@ class PaisRepositoryImpl @Inject constructor(
         return try {
             val response = apiService.searchByName(query)
             Result.success(response.map { it.toDomainListItem() })
+        } catch (e: retrofit2.HttpException) {
+            if (e.code() == 404) Result.success(emptyList()) // Caso "No encontrado"
+            else Result.failure(e)
         } catch (e: Exception) {
             Result.failure(e)
         }

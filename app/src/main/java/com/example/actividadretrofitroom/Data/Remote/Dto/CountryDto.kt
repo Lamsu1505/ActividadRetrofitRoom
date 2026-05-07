@@ -36,12 +36,14 @@ data class CurrencyDto(
 
 fun CountryDto.toDomainListItem(): CountryListItem {
     return CountryListItem(
-        cca3 = cca3 ?: "UNK", // Si no hay código, ponemos "Unknown"
+        cca3 = cca3 ?: "UNK",
         name = name?.common ?: "Sin nombre",
         capital = capital?.firstOrNull() ?: "N/A",
         region = region ?: "Desconocida",
-        subregion = "N/A",
+        subregion = subregion ?: "N/A",
         population = population ?: 0L,
+        area = area ?: 0.0,
+        languages = languages?.values?.toList() ?: emptyList(),
         flagUrl = flags?.png ?: ""
     )
 }

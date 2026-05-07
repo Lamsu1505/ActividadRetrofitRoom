@@ -10,8 +10,11 @@ import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.*
@@ -74,10 +77,13 @@ fun HomeScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                 )
+                
+                // Fila de Filtros (Región y Subregión)
                 RegionFilterRow(
                     selectedRegion = state.selectedRegion,
                     onRegionSelected = viewModel::onRegionSelected,
                 )
+                
                 AnimatedVisibility(visible = state.selectedRegion != null && state.availableSubregions.isNotEmpty()) {
                     SubregionFilterRow(
                         subregions = state.availableSubregions,
@@ -85,6 +91,16 @@ fun HomeScreen(
                         onSubregionSelected = viewModel::onSubregionSelected,
                     )
                 }
+
+                // NUEVA Fila de Filtros Adicionales (Orden e Idioma)
+                AdditionalFiltersRow(
+                    selectedSort = state.selectedSort,
+                    onSortSelected = viewModel::onSortOptionSelected,
+                    languages = state.availableLanguages,
+                    selectedLanguage = state.selectedLanguage,
+                    onLanguageSelected = viewModel::onLanguageSelected
+                )
+
                 HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
             }
         },
@@ -171,6 +187,85 @@ fun HomeScreen(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Componentes Adicionales de Filtro
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun AdditionalFiltersRow(
+    selectedSort: SortOption,
+    onSortSelected: (SortOption) -> Unit,
+    languages: List<String>,
+    selectedLanguage: String?,
+    onLanguageSelected: (String?) -> Unit
+) {
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Selector de Orden
+        item {
+            SortOptionChip(selectedSort, onSortSelected)
+        }
+
+        // Separador visual si hay idiomas
+        if (languages.isNotEmpty()) {
+            item {
+                VerticalDivider(modifier = Modifier.height(24.dp).padding(horizontal = 4.dp))
+            }
+
+            item {
+                FilterChip(
+                    selected = selectedLanguage == null,
+                    onClick = { onLanguageSelected(null) },
+                    label = { Text("Idiomas: Todos") },
+                    leadingIcon = { if (selectedLanguage == null) Icon(Icons.Default.FilterList, null, modifier = Modifier.size(16.dp)) }
+                )
+            }
+
+            items(languages) { language ->
+                FilterChip(
+                    selected = selectedLanguage == language,
+                    onClick = { onLanguageSelected(if (selectedLanguage == language) null else language) },
+                    label = { Text(language) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SortOptionChip(
+    selectedSort: SortOption,
+    onSortSelected: (SortOption) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Box {
+        AssistChip(
+            onClick = { expanded = true },
+            label = { Text("Ordenar por: ${selectedSort.label}") },
+            leadingIcon = { Icon(Icons.Default.Sort, null, modifier = Modifier.size(18.dp)) },
+            trailingIcon = { Icon(Icons.Default.ArrowDropDown, null) }
+        )
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            SortOption.entries.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(option.label) },
+                    onClick = {
+                        onSortSelected(option)
+                        expanded = false
+                    }
+                )
             }
         }
     }
@@ -499,7 +594,7 @@ private fun EmptyState(modifier: Modifier = Modifier) {
     ) {
         Text(text = "🌍", style = MaterialTheme.typography.displayMedium)
         Text(
-            text = "No se encontraron países",
+            text = "No se encontró el país",
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurface,
         )

@@ -10,7 +10,7 @@ interface PaisApiService {
     // Lista de todos los países
     @GET("all")
     suspend fun getAllCountries(
-        @Query("fields") fields: String = "name,flags,capital,region,subregion,population,cca3"
+        @Query("fields") fields: String = "name,flags,capital,region,subregion,population,cca3,area,languages"
     ): List<CountryDto>
 
     // Buscar por nombre

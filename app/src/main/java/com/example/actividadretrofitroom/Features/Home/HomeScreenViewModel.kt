@@ -1,7 +1,5 @@
 package com.example.actividadretrofitroom.Features.Home
 
-
-
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.actividadretrofitroom.Data.Repository.PaisRepository
@@ -16,7 +14,6 @@ import javax.inject.Inject
 // UI State
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Representa todos los posibles estados de la pantalla principal. */
 sealed interface HomeUiState {
     data object Loading : HomeUiState
     data class Success(val countries: List<CountryListItem>) : HomeUiState
@@ -24,7 +21,12 @@ sealed interface HomeUiState {
     data object Empty : HomeUiState
 }
 
-/** Estado completo de la UI expuesto al Composable. */
+enum class SortOption(val label: String) {
+    NAME("Nombre"),
+    POPULATION("Población"),
+    AREA("Área")
+}
+
 data class HomeScreenState(
     val uiState: HomeUiState = HomeUiState.Loading,
     val searchQuery: String = "",
@@ -35,17 +37,14 @@ data class HomeScreenState(
     val isLoadingNextPage: Boolean = false,
     val canLoadMore: Boolean = true,
     val currentPage: Int = 1,
+    val selectedSort: SortOption = SortOption.NAME,
+    val selectedLanguage: String? = null,
+    val availableLanguages: List<String> = emptyList(),
 )
 
-
-private const val PAGE_SIZE = 20
 private const val SEARCH_DEBOUNCE_MS = 300L
-
 val REGIONS = listOf("Africa", "Americas", "Asia", "Europe", "Oceania", "Antarctic")
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ViewModel
-// ─────────────────────────────────────────────────────────────────────────────
 @OptIn(FlowPreview::class)
 @HiltViewModel
 class HomeScreenViewModel @Inject constructor(
@@ -55,83 +54,47 @@ class HomeScreenViewModel @Inject constructor(
     private val _state = MutableStateFlow(HomeScreenState())
     val state: StateFlow<HomeScreenState> = _state.asStateFlow()
 
-    private val _allLoadedCountries = mutableListOf<CountryListItem>()
-
-    /** Flow interno del query para aplicar debounce antes de buscar. */
+    private val _allRawCountries = mutableListOf<CountryListItem>()
     private val _searchQueryFlow = MutableStateFlow("")
 
-    // ── Inicialización ────────────────────────────────────────────────────────
-
     init {
-        observeConnectivity()
         observeSearchQuery()
         loadCountries(reset = true)
     }
 
-    // ── API pública ──────────────────────────────────────────────────────────
+    // ── API Pública ──────────────────────────────────────────────────────────
 
-    /** Llamado cuando el usuario escribe en la barra de búsqueda. */
     fun onSearchQueryChange(query: String) {
         _state.update { it.copy(searchQuery = query) }
         _searchQueryFlow.value = query
     }
 
-    /** Llamado cuando el usuario selecciona o deselecciona una región. */
     fun onRegionSelected(region: String?) {
-        _state.update {
-            it.copy(
-                selectedRegion = region,
-                selectedSubregion = null,
-                availableSubregions = emptyList(),
-            )
-        }
+        _state.update { it.copy(selectedRegion = region, selectedSubregion = null) }
         loadCountries(reset = true)
     }
 
-    /** Llamado cuando el usuario selecciona o deselecciona una subregión. */
     fun onSubregionSelected(subregion: String?) {
         _state.update { it.copy(selectedSubregion = subregion) }
         loadCountries(reset = true)
     }
 
-    /**
-     * Carga la siguiente página cuando el usuario llega al final de la lista.
-     * No hace nada si ya se está cargando o no hay más datos.
-     */
-    fun loadNextPage() {
-        val current = _state.value
-        if (current.isLoadingNextPage || !current.canLoadMore) return
-        loadCountries(reset = false)
+    fun onSortOptionSelected(option: SortOption) {
+        _state.update { it.copy(selectedSort = option) }
+        applyFiltersAndSort()
     }
 
-    /** Refresca la lista desde cero (pull-to-refresh o botón reintentar). */
-    fun refresh() {
-        loadCountries(reset = true)
+    fun onLanguageSelected(language: String?) {
+        _state.update { it.copy(selectedLanguage = language) }
+        applyFiltersAndSort()
     }
 
-    // ── Lógica interna ───────────────────────────────────────────────────────
+    fun loadNextPage() { /* REST Countries no requiere paginación tradicional */ }
 
-    /**
-     * Observa el Flow de conectividad expuesto por el repositorio.
-     * Actualiza [HomeScreenState.isOnline] en tiempo real.
-     */
-    private fun observeConnectivity() {
-        viewModelScope.launch {
-//            repository.observeConnectivity().collect { isOnline ->
-//                val wasOffline = !_state.value.isOnline
-//                _state.update { it.copy(isOnline = isOnline) }
-//                // Si recuperamos conexión, refresca datos
-//                if (wasOffline && isOnline) {
-//                    loadCountries(reset = true)
-//                }
-//            }
-        }
-    }
+    fun refresh() = loadCountries(reset = true)
 
-    /**
-     * Escucha el Flow de búsqueda con debounce para no llamar a la API
-     * en cada pulsación de teclado.
-     */
+    // ── Lógica Interna ───────────────────────────────────────────────────────
+
     private fun observeSearchQuery() {
         viewModelScope.launch {
             _searchQueryFlow
@@ -141,69 +104,55 @@ class HomeScreenViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Ejecuta la carga de países según los filtros activos.
-     * Ahora utiliza el endpoint de búsqueda remota si hay un query.
-     */
     private fun loadCountries(reset: Boolean) {
         viewModelScope.launch {
             val current = _state.value
-
             if (reset) {
-                _allLoadedCountries.clear()
-                _state.update {
-                    it.copy(
-                        uiState = HomeUiState.Loading,
-                        currentPage = 1,
-                        canLoadMore = true,
-                    )
-                }
-            } else {
-                _state.update { it.copy(isLoadingNextPage = true) }
+                _state.update { it.copy(uiState = HomeUiState.Loading) }
             }
 
-            // Decidir qué endpoint llamar
             val result = when {
-                current.searchQuery.isNotBlank() -> {
-                    paisRepository.searchCountries(current.searchQuery.trim())
-                }
-                current.selectedRegion != null -> {
-                    paisRepository.getCountriesByRegion(current.selectedRegion)
-                }
-                else -> {
-                    paisRepository.getAllCountries()
-                }
+                current.searchQuery.isNotBlank() -> paisRepository.searchCountries(current.searchQuery.trim())
+                current.selectedRegion != null -> paisRepository.getCountriesByRegion(current.selectedRegion)
+                else -> paisRepository.getAllCountries()
             }
 
             result.onSuccess { countries ->
-                // Si buscamos por nombre y tenemos región seleccionada,
-                // filtramos localmente los resultados de la búsqueda por región.
-                val processedCountries = if (current.searchQuery.isNotBlank() && current.selectedRegion != null) {
-                    countries.filter { it.region.equals(current.selectedRegion, ignoreCase = true) }
-                } else {
-                    countries
-                }
-
-                _allLoadedCountries.addAll(processedCountries)
-
-                _state.update {
-                    it.copy(
-                        uiState = if (_allLoadedCountries.isEmpty())
-                            HomeUiState.Empty
-                        else
-                            HomeUiState.Success(_allLoadedCountries.toList()),
-                        isLoadingNextPage = false,
-                        canLoadMore = false // REST Countries devuelve la lista completa
-                    )
-                }
+                _allRawCountries.clear()
+                _allRawCountries.addAll(countries)
+                
+                // Extraer idiomas únicos
+                val languages = countries.flatMap { it.languages }.distinct().sorted()
+                
+                _state.update { it.copy(availableLanguages = languages) }
+                applyFiltersAndSort()
             }.onFailure { error ->
-                _state.update {
-                    it.copy(
-                        uiState = HomeUiState.Error(error.message ?: "Error al cargar países"),
-                        isLoadingNextPage = false
-                    )
-                }
+                _state.update { it.copy(uiState = HomeUiState.Error(error.message ?: "Error de red")) }
             }
+        }
+    }
+
+    private fun applyFiltersAndSort() {
+        val current = _state.value
+        
+        // 1. Filtrar por Subregión e Idioma
+        var filtered = _allRawCountries.filter { country ->
+            val matchesSubregion = current.selectedSubregion == null || country.subregion == current.selectedSubregion
+            val matchesLanguage = current.selectedLanguage == null || country.languages.contains(current.selectedLanguage)
+            matchesSubregion && matchesLanguage
+        }
+
+        // 2. Ordenar
+        filtered = when (current.selectedSort) {
+            SortOption.NAME -> filtered.sortedBy { it.name }
+            SortOption.POPULATION -> filtered.sortedByDescending { it.population }
+            SortOption.AREA -> filtered.sortedByDescending { it.area }
+        }
+
+        _state.update {
+            it.copy(
+                uiState = if (filtered.isEmpty()) HomeUiState.Empty else HomeUiState.Success(filtered)
+            )
         }
     }
 }

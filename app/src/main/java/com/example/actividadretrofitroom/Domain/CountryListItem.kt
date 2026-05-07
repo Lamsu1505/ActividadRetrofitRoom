@@ -7,5 +7,7 @@ data class CountryListItem(
     val region: String,
     val subregion: String?,
     val population: Long,
+    val area: Double,
+    val languages: List<String>,
     val flagUrl: String,
 )
