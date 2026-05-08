@@ -1,7 +1,8 @@
 package com.example.actividadretrofitroom.Data.Repository
 
 import com.example.actividadretrofitroom.Data.Local.DAO.PaisDao
-import com.example.actividadretrofitroom.Data.Local.Entity.PaisEntity
+import com.example.actividadretrofitroom.Data.Local.Entity.toDomain
+import com.example.actividadretrofitroom.Data.Local.Entity.toEntity
 import com.example.actividadretrofitroom.Data.Remote.Dto.toDomainDetail
 import com.example.actividadretrofitroom.Data.Remote.Dto.toDomainListItem
 import com.example.actividadretrofitroom.Data.Remote.PaisApiService
@@ -16,27 +17,29 @@ class PaisRepositoryImpl @Inject constructor(
     private val apiService: PaisApiService
 ) : PaisRepository {
 
-    override suspend fun insert(pais: PaisEntity) {
-        paisDao.insert(pais)
-    }
-
-    override suspend fun getAllLocal(): List<PaisEntity> {
-        return paisDao.getAll()
-    }
-
     override suspend fun getAllCountries(): Result<List<CountryListItem>> {
         return try {
             val response = apiService.getAllCountries()
-            Result.success(response.map { it.toDomainListItem() })
+            val domainList = response.map { it.toDomainListItem() }
+            
+            // Persistencia local: Actualizar caché de forma atómica
+            paisDao.updateAll(domainList.map { it.toEntity() })
+            
+            Result.success(domainList)
         } catch (e: Exception) {
-            Result.failure(e)
+            // Recuperación Offline: Si falla la red, buscar en Room
+            val localPaises = paisDao.getAll()
+            if (localPaises.isNotEmpty()) {
+                Result.success(localPaises.map { it.toDomain() })
+            } else {
+                Result.failure(e)
+            }
         }
     }
 
     override suspend fun getCountryByCode(code: String): Result<CountryDetail> {
         return try {
             val response = apiService.getByCode(code)
-            // La API devuelve una lista, tomamos el primer resultado
             val country = response.firstOrNull()
             if (country != null) {
                 Result.success(country.toDomainDetail())
@@ -51,9 +54,15 @@ class PaisRepositoryImpl @Inject constructor(
     override suspend fun getCountriesByRegion(region: String): Result<List<CountryListItem>> {
         return try {
             val response = apiService.getByRegion(region)
-            Result.success(response.map { it.toDomainListItem() })
+            val domainList = response.map { it.toDomainListItem() }
+            Result.success(domainList)
         } catch (e: Exception) {
-            Result.failure(e)
+            val localPaises = paisDao.getByRegion(region)
+            if (localPaises.isNotEmpty()) {
+                Result.success(localPaises.map { it.toDomain() })
+            } else {
+                Result.failure(e)
+            }
         }
     }
 
@@ -61,11 +70,13 @@ class PaisRepositoryImpl @Inject constructor(
         return try {
             val response = apiService.searchByName(query)
             Result.success(response.map { it.toDomainListItem() })
-        } catch (e: retrofit2.HttpException) {
-            if (e.code() == 404) Result.success(emptyList()) // Caso "No encontrado"
-            else Result.failure(e)
         } catch (e: Exception) {
-            Result.failure(e)
+            val localPaises = paisDao.search(query)
+            if (localPaises.isNotEmpty()) {
+                Result.success(localPaises.map { it.toDomain() })
+            } else {
+                Result.failure(e)
+            }
         }
     }
 }

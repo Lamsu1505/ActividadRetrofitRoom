@@ -1,6 +1,7 @@
 package com.example.actividadretrofitroom.Features.Home
 
 
+import android.util.Log
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -524,58 +525,42 @@ private fun RegionBadge(region: String) {
 // Banner de conexión
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ... (dentro de HomeScreen.kt)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Banner de conexión
+// ─────────────────────────────────────────────────────────────────────────────
+
 @Composable
 private fun ConnectionStatusBanner(isOnline: Boolean) {
-    var showOnlineBanner by remember { mutableStateOf(false) }
-    var previousOnline by remember { mutableStateOf(isOnline) }
+    // Definimos los colores según el estado solicitado
+    val bannerColor = if (isOnline) Color(0xFF2E7D32) else Color(0xFFC62828)
+    val statusText = if (isOnline) "Dispositivo conectado" else "Sin conexión — modo offline"
+    val icon = if (isOnline) Icons.Default.Wifi else Icons.Default.WifiOff
 
-    LaunchedEffect(isOnline) {
-        if (!previousOnline && isOnline) {
-            showOnlineBanner = true
-            delay(2500)
-            showOnlineBanner = false
-        }
-        previousOnline = isOnline
-    }
-
-    AnimatedVisibility(
-        visible = !isOnline || showOnlineBanner,
-        enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-        exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+    Surface(
+        color = bannerColor,
+        contentColor = Color.White,
+        shadowElevation = 8.dp
     ) {
-        val isOffline = !isOnline
-        val bannerColor = if (isOffline)
-            MaterialTheme.colorScheme.errorContainer
-        else
-            Color(0xFF1B5E20)
-
-        val contentColor = if (isOffline)
-            MaterialTheme.colorScheme.onErrorContainer
-        else
-            Color.White
-
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(bannerColor)
                 .navigationBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 10.dp),
+                .padding(horizontal = 16.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.Center
         ) {
             Icon(
-                imageVector = if (isOffline) Icons.Default.WifiOff else Icons.Default.Wifi,
+                imageVector = icon,
                 contentDescription = null,
-                tint = contentColor,
-                modifier = Modifier.size(18.dp),
+                modifier = Modifier.size(16.dp)
             )
+            Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = if (isOffline)
-                    "Sin conexión — mostrando datos guardados"
-                else
-                    "Conexión restaurada",
-                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium),
-                color = contentColor,
+                text = statusText,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold
             )
         }
     }
