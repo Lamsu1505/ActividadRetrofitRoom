@@ -5,10 +5,12 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
+import com.example.actividadretrofitroom.Data.Local.Entity.PaisDetailEntity
 import com.example.actividadretrofitroom.Data.Local.Entity.PaisEntity
 
 @Dao
 interface PaisDao {
+    // Paises (Lista general)
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(paises: List<PaisEntity>)
 
@@ -29,4 +31,11 @@ interface PaisDao {
         clearAll()
         insertAll(paises)
     }
+
+    // Paises Detalles (Caché de detalles visitados bajo demanda)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertDetail(detail: PaisDetailEntity)
+
+    @Query("SELECT * FROM paises_detalles WHERE cca3 = :cca3")
+    suspend fun getDetailByCode(cca3: String): PaisDetailEntity?
 }

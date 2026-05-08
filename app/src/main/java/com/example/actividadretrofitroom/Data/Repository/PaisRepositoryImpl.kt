@@ -42,12 +42,21 @@ class PaisRepositoryImpl @Inject constructor(
             val response = apiService.getByCode(code)
             val country = response.firstOrNull()
             if (country != null) {
-                Result.success(country.toDomainDetail())
+                val detail = country.toDomainDetail()
+                // Guardar en Room solo cuando se visualiza el detalle
+                paisDao.insertDetail(detail.toEntity())
+                Result.success(detail)
             } else {
                 Result.failure(Exception("País no encontrado"))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            // Intentar recuperar de la caché de detalles si no hay conexión
+            val localDetail = paisDao.getDetailByCode(code)
+            if (localDetail != null) {
+                Result.success(localDetail.toDomain())
+            } else {
+                Result.failure(e)
+            }
         }
     }
 
