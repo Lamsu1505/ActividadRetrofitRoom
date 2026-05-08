@@ -1,13 +1,12 @@
 package com.example.actividadretrofitroom.Features.CountryDetail
 
 import androidx.compose.foundation.background
-
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -15,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -35,7 +35,7 @@ fun CountryDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Detalle del País") },
+                title = { Text("Detalle", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Regresar")
@@ -54,14 +54,42 @@ fun CountryDetailScreen(
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 }
                 is DetailUiState.Error -> {
+                    // Estado de error personalizado y profesional
                     Column(
-                        modifier = Modifier.align(Alignment.Center).padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .padding(32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
                     ) {
-                        Text(state.message, color = MaterialTheme.colorScheme.error)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Button(onClick = { viewModel.loadCountryDetail() }) {
-                            Text("Reintentar")
+                        Icon(
+                            imageVector = Icons.Default.WifiOff,
+                            contentDescription = null,
+                            modifier = Modifier.size(80.dp),
+                            tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
+                        )
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Text(
+                            text = "¡Ups! Problema de conexión",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = state.message, // Muestra el mensaje del repositorio
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                            lineHeight = 20.sp
+                        )
+                        Spacer(modifier = Modifier.height(32.dp))
+                        Button(
+                            onClick = { viewModel.loadCountryDetail() },
+                            shape = RoundedCornerShape(12.dp),
+                            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
+                        ) {
+                            Text("Reintentar conexión")
                         }
                     }
                 }
@@ -73,6 +101,7 @@ fun CountryDetailScreen(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun CountryDetailContent(country: CountryDetail) {
     LazyColumn(
@@ -80,7 +109,7 @@ private fun CountryDetailContent(country: CountryDetail) {
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Bandera y Nombres
+        // Bandera y Cabecera
         item {
             AsyncImage(
                 model = country.flagUrl,
@@ -88,7 +117,7 @@ private fun CountryDetailContent(country: CountryDetail) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(200.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(16.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentScale = ContentScale.Crop
             )
@@ -96,18 +125,18 @@ private fun CountryDetailContent(country: CountryDetail) {
             Text(
                 text = country.name,
                 style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.ExtraBold
             )
             Text(
                 text = country.officialName,
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.secondary
             )
         }
 
-        // Información General
+        // Secciones de Información
         item {
-            DetailSection("Información General") {
+            DetailSection("Geografía e Información") {
                 DetailItem("Capital", country.capital)
                 DetailItem("Región", country.region)
                 DetailItem("Subregión", country.subregion)
@@ -117,7 +146,6 @@ private fun CountryDetailContent(country: CountryDetail) {
             }
         }
 
-        // Idiomas
         if (country.languages.isNotEmpty()) {
             item {
                 DetailSection("Idiomas") {
@@ -133,7 +161,6 @@ private fun CountryDetailContent(country: CountryDetail) {
             }
         }
 
-        // Monedas
         if (country.currencies.isNotEmpty()) {
             item {
                 DetailSection("Monedas") {
@@ -144,29 +171,18 @@ private fun CountryDetailContent(country: CountryDetail) {
             }
         }
 
-        // Fronteras
         if (country.borders.isNotEmpty()) {
             item {
-                DetailSection("Fronteras") {
+                DetailSection("Países Fronterizos") {
                     FlowRow(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         country.borders.forEach { border ->
-                            AssistChip(
-                                onClick = { /* Podrías navegar a este país si quisieras */ },
-                                label = { Text(border) }
-                            )
+                            AssistChip(onClick = { }, label = { Text(border) })
                         }
                     }
                 }
-            }
-        }
-
-        // Códigos
-        item {
-            DetailSection("Identificadores") {
-                DetailItem("Código CCA3", country.cca3)
             }
         }
     }
@@ -174,26 +190,27 @@ private fun CountryDetailContent(country: CountryDetail) {
 
 @Composable
 private fun DetailSection(title: String, content: @Composable () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
+            text = title.uppercase(),
+            style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.primary,
-            fontWeight = FontWeight.SemiBold
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.sp
         )
         content()
-        HorizontalDivider(modifier = Modifier.padding(top = 8.dp))
+        HorizontalDivider(modifier = Modifier.padding(top = 12.dp), thickness = 0.5.dp)
     }
 }
 
 @Composable
 private fun DetailItem(label: String, value: String) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(text = label, fontWeight = FontWeight.Medium)
-        Text(text = value, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(text = label, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+        Text(text = value, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

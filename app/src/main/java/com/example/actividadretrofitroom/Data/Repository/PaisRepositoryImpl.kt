@@ -55,7 +55,8 @@ class PaisRepositoryImpl @Inject constructor(
             if (localDetail != null) {
                 Result.success(localDetail.toDomain())
             } else {
-                Result.failure(e)
+                // Caso solicitado: Sin internet y sin datos en Room
+                Result.failure(Exception("no tienes conexion a internet y tampoco esta guardado en el cache"))
             }
         }
     }
